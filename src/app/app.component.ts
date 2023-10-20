@@ -63,13 +63,33 @@ export class AppComponent implements AfterViewInit{
     const infoWindow = new google.maps.InfoWindow();
 
       //carregar o geojson
-    map.data.loadGeoJson('assets/data.geojson');
+    map.data.loadGeoJson('assets/data2.geojson');
 
       //estilo do mapa - geojson
     map.data.setStyle((feature: any) =>{
-      const isMarker = feature.getGeometry().getType() === 'Point';
+      let fillColor;
+      const zona = feature.getProperty('Zona');
+
+      switch (zona) {
+        case 'Norte':
+          fillColor = 'red';
+          break;
+        case 'Sul':
+          fillColor = 'green';
+          break;
+        case 'Leste':
+          fillColor = 'yellow';
+          break;
+        case 'Oeste':
+          fillColor = 'orange';
+          break;
+        default:
+          fillColor = 'blue';
+          break;
+      }
+
       return {
-        fillColor: 'blue',
+        fillColor: fillColor,
         strokeWeight: 1
       };
     });
@@ -78,7 +98,7 @@ export class AppComponent implements AfterViewInit{
     map.data.addListener('click', (event: any) => {
       const geometryType = event.feature.getGeometry().getType();
       if (geometryType === 'Point') {
-        const content = event.feature.getProperty('name') || 'Nome não disponível';
+        const content = event.feature.getProperty('Name') || 'Nome não disponível';
         infoWindow.setContent(content);
         infoWindow.setPosition(event.feature.getGeometry().get());
         infoWindow.open(map);
