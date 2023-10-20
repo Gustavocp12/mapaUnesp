@@ -1,4 +1,6 @@
+<app-toolbar></app-toolbar>
 <div #map class="map"></div>
 <div *ngIf="showModalFlag">
   <app-modal #modal [modal]="Modalitens" (closeEvent)="showModalFlag = false"></app-modal>
 </div>
+<div class="loading" [class.hidden]="loadComplete"></div>

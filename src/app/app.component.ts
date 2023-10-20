@@ -12,13 +12,14 @@ import {ModalComponent} from "./modal/modal.component";
 
 export class AppComponent implements AfterViewInit, OnInit{
 
-  constructor(private authService: AuthService, private casesService: CasesService, private cdr: ChangeDetectorRef) {}
+  constructor(private authService: AuthService, private casesService: CasesService) {}
 
   email = 'admin@admin.com';
   password = '123456';
   casos: any;
   public showModalFlag = false;
   public Modalitens!: Modal;
+  loadComplete = false;
 
   login(){
     this.authService.login(this.email, this.password).subscribe((token) => {
@@ -82,6 +83,7 @@ export class AppComponent implements AfterViewInit, OnInit{
           }
         });
       });
+    this.loadComplete = true;
   }
 
   //função do mapa

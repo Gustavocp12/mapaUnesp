@@ -1,0 +1,7 @@
+<div class="infoView">
+  <div class="infoView-title">Zonas</div>
+  <div class="infoView-text">
+    <span *ngFor="let zona of zonas">{{zona.zona}} - {{zona.cor}}</span>
+  </div>
+  <i class="close" (click)="close()">&times;</i>
+</div>

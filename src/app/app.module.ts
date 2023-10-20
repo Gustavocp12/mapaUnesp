@@ -7,11 +7,15 @@ import {CommonModule} from "@angular/common";
 import {GoogleMapsModule} from "@angular/google-maps";
 import {HttpClientModule} from "@angular/common/http";
 import { ModalComponent } from './modal/modal.component';
+import { ToolbarComponent } from './toolbar/toolbar.component';
+import { InfoViewComponent } from './toolbar/info-view/info-view.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    ModalComponent
+    ModalComponent,
+    ToolbarComponent,
+    InfoViewComponent
   ],
   imports: [
     CommonModule,

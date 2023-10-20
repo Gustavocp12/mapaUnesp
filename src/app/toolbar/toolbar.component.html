@@ -1,0 +1,7 @@
+<div class="toolbar" [ngClass]="{'toolbar-opened': !hidden, 'toolbar-closed': hidden}">
+    <div class="toolbar-item" *ngIf="!hidden">
+        <span class="item" *ngFor="let item of toolbar" (click)="selectInfo(item.id)">{{item.label}}</span>
+    </div>
+    <i (click)="hiddenBar()"><</i>
+</div>
+<app-info-view *ngIf="infoView" (closeInfoView)="infoView = false"></app-info-view>
