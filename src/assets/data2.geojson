@@ -3829,6 +3829,6 @@
 { "type": "Feature", "properties": { "Name": "UBS José Pereira da Silva Jacutinga", "description": null }, "geometry": { "type": "Point", "coordinates": [ -50.570328213212335, -21.30014807609916 ] } },
 { "type": "Feature", "properties": { "Name": "UBS Irmã Dulce (Zona Rural)", "description": null }, "geometry": { "type": "Point", "coordinates": [ -50.50254904346052, -21.1501755255995 ] } },
 { "type": "Feature", "properties": { "Name": "UBS Bento De Sousa (Zona Rural)", "description": null }, "geometry": { "type": "Point", "coordinates": [ -50.57444068740039, -21.358140879492417 ] } },
-{ "type": "Feature", "properties": { "Name": "UBS Dr. José Luis Madrid (Zona Rural)", "description": null }, "geometry": { "type": "Point", "coordinates": [ -50.52207590138096, -21.33885740329686 ] } },
+{ "type": "Feature", "properties": { "Name": "UBS Dr. José Luis Madrid (Zona Rural)", "description": null }, "geometry": { "type": "Point", "coordinates": [ -50.52207590138096, -21.33885740329686 ] } }
 ]
 }

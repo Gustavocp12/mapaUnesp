@@ -1,4 +1,6 @@
-import {AfterViewInit, Component, ElementRef, ViewChild} from '@angular/core';
+import {AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {AuthService} from "./services/auth.service";
+import {CasesService} from "./services/cases.service";
 
 @Component({
   selector: 'app-root',
@@ -6,15 +8,37 @@ import {AfterViewInit, Component, ElementRef, ViewChild} from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 
-export class AppComponent implements AfterViewInit{
-  title = 'mapaUnesp';
+export class AppComponent implements AfterViewInit, OnInit{
+
+  constructor(private authService: AuthService, private casesService: CasesService, private cdr: ChangeDetectorRef) {}
+
+  email = 'admin@admin.com';
+  password = '123456';
+  casos: any;
+
+  login(){
+    this.authService.login(this.email, this.password).subscribe((token) => {
+      localStorage.setItem('token', token.token);
+      this.getCases();
+    });
+  }
+
+  getCases(){
+    this.casesService.getCases().subscribe((data) => {
+      this.casos = data;
+      this.mapInitializer();
+    });
+  }
 
   //referenciar o mapa no html
   @ViewChild('map', {static: false}) gmap!: ElementRef;
 
   //ciclo de vida que inicializa apos a view ser carregada
   ngAfterViewInit(): void {
-    this.mapInitializer();
+  }
+
+  ngOnInit() {
+    this.login();
   }
 
   //função do mapa
@@ -42,7 +66,7 @@ export class AppComponent implements AfterViewInit{
       {
         featureType: 'poi',
         stylers: [{ visibility: 'off' }]
-      }
+      },
     ];
 
      //opções do mapa
@@ -90,7 +114,7 @@ export class AppComponent implements AfterViewInit{
 
       return {
         fillColor: fillColor,
-        strokeWeight: 1
+        strokeWeight: 0
       };
     });
 
@@ -104,5 +128,82 @@ export class AppComponent implements AfterViewInit{
         infoWindow.open(map);
       }
     });
+
+    this.addMarkers(map);
   }
+
+  async addMarkers(map: google.maps.Map): Promise<void> {
+    await this.loadPolygons(map);
+
+    this.casos.forEach((item: any) => {
+      if (item.latitude && item.longitude) {
+        const lat = parseFloat(item.latitude);
+        const lng = parseFloat(item.longitude);
+
+        const zona = this.getZonaForLatLng(lat, lng);
+        const status = item.status;
+
+        const circle = new google.maps.Circle({
+          strokeColor: '#800080',
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: '#800080',
+          fillOpacity: 0.35,
+          map: map,
+          center: new google.maps.LatLng(lat, lng),
+          radius: 100
+        });
+
+        const infoContent = zona ?
+          `<div>Status: ${status}</div><div>Zona: ${zona}</div>` :
+          `<div>Status: ${status}</div><div>Zona não determinada</div>`;
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: infoContent
+        });
+
+        circle.addListener('click', (event: any) => {
+          infoWindow.setPosition(event.latLng);
+          infoWindow.open(map);
+        });
+      }
+    });
+  }
+
+  //verificar zonas
+  polygons: google.maps.Polygon[] = [];
+
+  loadPolygons(map: google.maps.Map): Promise<void> {
+    return new Promise((resolve, reject) => {
+      map.data.loadGeoJson('assets/data2.geojson', {}, (features) => {
+        features.forEach((feature: google.maps.Data.Feature) => {
+          const geometry = feature.getGeometry();
+          if (geometry!.getType() === 'Polygon') {
+            const polygonCoords = (geometry as google.maps.Data.Polygon).getAt(0).getArray().map((latLng: google.maps.LatLng) => {
+              return {lat: latLng.lat(), lng: latLng.lng()};
+            });
+            const polygon = new google.maps.Polygon({
+              paths: polygonCoords
+            });
+            polygon.set("zona", feature.getProperty('Zona'));
+            this.polygons.push(polygon);
+          }
+        });
+        console.log("Total de polígonos carregados:", this.polygons.length);
+        resolve();
+      });
+    });
+  }
+
+  getZonaForLatLng(lat: number, lng: number): string | null {
+    const point = new google.maps.LatLng(lat, lng);
+    const foundPolygon = this.polygons.find(polygon => {
+      const isInside = google.maps.geometry.poly.containsLocation(point, polygon);
+      return isInside;
+    });
+    return foundPolygon ? foundPolygon.get("zona") : null;
+  }
+
+
+
 }
