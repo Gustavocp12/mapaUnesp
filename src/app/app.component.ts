@@ -1,6 +1,8 @@
 import {AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {AuthService} from "./services/auth.service";
 import {CasesService} from "./services/cases.service";
+import {Modal} from "./modal/modal";
+import {ModalComponent} from "./modal/modal.component";
 
 @Component({
   selector: 'app-root',
@@ -15,6 +17,8 @@ export class AppComponent implements AfterViewInit, OnInit{
   email = 'admin@admin.com';
   password = '123456';
   casos: any;
+  public showModalFlag = false;
+  public Modalitens!: Modal;
 
   login(){
     this.authService.login(this.email, this.password).subscribe((token) => {
@@ -32,6 +36,8 @@ export class AppComponent implements AfterViewInit, OnInit{
 
   //referenciar o mapa no html
   @ViewChild('map', {static: false}) gmap!: ElementRef;
+  //referenciar o modal no html
+  @ViewChild('modal', {static: false}) modal!: ModalComponent;
 
   //ciclo de vida que inicializa apos a view ser carregada
   ngAfterViewInit(): void {
@@ -39,6 +45,43 @@ export class AppComponent implements AfterViewInit, OnInit{
 
   ngOnInit() {
     this.login();
+  }
+
+  showModal(data: Modal): void {
+    this.Modalitens = data;
+    this.showModalFlag = true;
+    setTimeout(() => {
+      this.modal.verifyStatus();
+    }, 0);
+  }
+
+  loadAndProcessGeoJson(map: google.maps.Map, url: string): void {
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        data.features.forEach((feature: any) => {
+          if (feature.geometry.type === 'Point') {
+            const position = new google.maps.LatLng(
+              feature.geometry.coordinates[1],
+              feature.geometry.coordinates[0]
+            );
+
+            const marker = new google.maps.Marker({
+              position: position,
+              icon: 'assets/icons/point.png',
+              map: map
+            });
+
+            marker.addListener('click', () => {
+              const content = feature.properties.Name || 'Nome não disponível';
+              const infoWindow = new google.maps.InfoWindow({
+                content: content
+              });
+              infoWindow.open(map, marker);
+            });
+          }
+        });
+      });
   }
 
   //função do mapa
@@ -72,6 +115,7 @@ export class AppComponent implements AfterViewInit, OnInit{
      //opções do mapa
     const mapOptions: google.maps.MapOptions = {
       center: coordinates,
+      fullscreenControl: false,
       zoom: 13,
       styles: mapStyles,
       restriction: {
@@ -87,10 +131,16 @@ export class AppComponent implements AfterViewInit, OnInit{
     const infoWindow = new google.maps.InfoWindow();
 
       //carregar o geojson
-    map.data.loadGeoJson('assets/data2.geojson');
+    this.loadAndProcessGeoJson(map, 'assets/data2.geojson');
 
       //estilo do mapa - geojson
     map.data.setStyle((feature: any) =>{
+      const geometryType = feature.getGeometry().getType();
+      if (geometryType === 'Point') {
+        return {
+          visible: false
+        };
+      }
       let fillColor;
       const zona = feature.getProperty('Zona');
 
@@ -118,13 +168,22 @@ export class AppComponent implements AfterViewInit, OnInit{
       };
     });
 
+    const customIconUrl = 'assets/icons/point.png';
+
       //evento de click - infoWindow
     map.data.addListener('click', (event: any) => {
       const geometryType = event.feature.getGeometry().getType();
       if (geometryType === 'Point') {
+        const position = event.feature.getGeometry().get();
+        const marker = new google.maps.Marker({
+          position: position,
+          icon: customIconUrl,
+          map: map
+        });
+
         const content = event.feature.getProperty('Name') || 'Nome não disponível';
         infoWindow.setContent(content);
-        infoWindow.setPosition(event.feature.getGeometry().get());
+        infoWindow.setPosition(position);
         infoWindow.open(map);
       }
     });
@@ -135,6 +194,11 @@ export class AppComponent implements AfterViewInit, OnInit{
   async addMarkers(map: google.maps.Map): Promise<void> {
     await this.loadPolygons(map);
 
+    const customIcon = {
+      url: 'assets/icons/mosquito.png',
+      scaledSize: new google.maps.Size(20, 20)
+    };
+
     this.casos.forEach((item: any) => {
       if (item.latitude && item.longitude) {
         const lat = parseFloat(item.latitude);
@@ -143,15 +207,10 @@ export class AppComponent implements AfterViewInit, OnInit{
         const zona = this.getZonaForLatLng(lat, lng);
         const status = item.status;
 
-        const circle = new google.maps.Circle({
-          strokeColor: '#800080',
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: '#800080',
-          fillOpacity: 0.35,
-          map: map,
-          center: new google.maps.LatLng(lat, lng),
-          radius: 100
+        const marker = new google.maps.Marker({
+          position: new google.maps.LatLng(lat, lng),
+          icon: customIcon,
+          map: map
         });
 
         const infoContent = zona ?
@@ -162,9 +221,15 @@ export class AppComponent implements AfterViewInit, OnInit{
           content: infoContent
         });
 
-        circle.addListener('click', (event: any) => {
-          infoWindow.setPosition(event.latLng);
-          infoWindow.open(map);
+        marker.addListener('click', () => {
+          const modalData: Modal = {
+            endereco: 'Seu endereço aqui',
+            lat: lat,
+            lng: lng,
+            status: status,
+            zona: zona || 'Zona não determinada'
+          };
+          this.showModal(modalData);
         });
       }
     });
@@ -189,7 +254,6 @@ export class AppComponent implements AfterViewInit, OnInit{
             this.polygons.push(polygon);
           }
         });
-        console.log("Total de polígonos carregados:", this.polygons.length);
         resolve();
       });
     });

@@ -6,10 +6,12 @@ import { AppComponent } from './app.component';
 import {CommonModule} from "@angular/common";
 import {GoogleMapsModule} from "@angular/google-maps";
 import {HttpClientModule} from "@angular/common/http";
+import { ModalComponent } from './modal/modal.component';
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    ModalComponent
   ],
   imports: [
     CommonModule,

@@ -1,0 +1,13 @@
+<div class="modal">
+  <div class="modal-title">Detalhes do caso</div>
+  <div class="modal-text">
+    <span>Endereço: {{modal.endereco}}</span>
+    <span>Status: <span id="status">{{modal.status}}</span></span>
+    <span>Zona: {{modal.zona}}</span>
+    <div class="lat-lng">
+      <span>Latitude: {{modal.lat}}</span>
+      <span>Longitude: {{modal.lng}}</span>
+    </div>
+  </div>
+  <i class="close" (click)="close()">&times;</i>
+</div>
