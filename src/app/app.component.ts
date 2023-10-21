@@ -1,8 +1,10 @@
-import {AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {AuthService} from "./services/auth.service";
 import {CasesService} from "./services/cases.service";
 import {Modal} from "./modal/modal";
 import {ModalComponent} from "./modal/modal.component";
+import {ReturnZoneService} from "./services/return-zone.service";
+import * as mapConfig from './mapConfig';
 
 @Component({
   selector: 'app-root',
@@ -10,9 +12,9 @@ import {ModalComponent} from "./modal/modal.component";
   styleUrls: ['./app.component.scss']
 })
 
-export class AppComponent implements AfterViewInit, OnInit{
+export class AppComponent implements OnInit{
 
-  constructor(private authService: AuthService, private casesService: CasesService) {}
+  constructor(private authService: AuthService, private casesService: CasesService, private returnZoneService: ReturnZoneService) {}
 
   email = 'admin@admin.com';
   password = '123456';
@@ -35,20 +37,14 @@ export class AppComponent implements AfterViewInit, OnInit{
     });
   }
 
-  //referenciar o mapa no html
   @ViewChild('map', {static: false}) gmap!: ElementRef;
-  //referenciar o modal no html
   @ViewChild('modal', {static: false}) modal!: ModalComponent;
-
-  //ciclo de vida que inicializa apos a view ser carregada
-  ngAfterViewInit(): void {
-  }
 
   ngOnInit() {
     this.login();
   }
 
-  showModal(data: Modal): void {
+  private showModal(data: Modal): void {
     this.Modalitens = data;
     this.showModalFlag = true;
     setTimeout(() => {
@@ -56,7 +52,7 @@ export class AppComponent implements AfterViewInit, OnInit{
     }, 0);
   }
 
-  loadAndProcessGeoJson(map: google.maps.Map, url: string): void {
+  private loadAndProcessGeoJson(map: google.maps.Map, url: string): void {
     fetch(url)
       .then(response => response.json())
       .then(data => {
@@ -69,16 +65,13 @@ export class AppComponent implements AfterViewInit, OnInit{
 
             const marker = new google.maps.Marker({
               position: position,
-              icon: 'assets/icons/point.png',
+              icon: mapConfig.customIconUrlPoint,
               map: map
             });
 
             marker.addListener('click', () => {
               const content = feature.properties.Name || 'Nome não disponível';
-              const infoWindow = new google.maps.InfoWindow({
-                content: content
-              });
-              infoWindow.open(map, marker);
+              this.openInfoWindow(map, content, position, marker);
             });
           }
         });
@@ -86,56 +79,21 @@ export class AppComponent implements AfterViewInit, OnInit{
     this.loadComplete = true;
   }
 
-  //função do mapa
-  mapInitializer(): void {
 
-    //variaveis de controle do mapa
-
-      //limites do mapa
-    const allowedBounds = new google.maps.LatLngBounds(
-      new google.maps.LatLng(-21.266389, -50.547887),
-      new google.maps.LatLng(-21.105210, -50.370498)
-    );
-
-      //ajustar a centralização do mapa
-    const centerLat = (-21.266389 + -21.105210) / 2;
-    const centerLng = (-50.547887 + -50.370498) / 2;
-    const adjustmentLat = 0.02;
-    const adjustmentLng = 0.01;
-    const adjustedCenterLat = centerLat - adjustmentLat;
-    const adjustedCenterLng = centerLng + adjustmentLng;
-    const coordinates = new google.maps.LatLng(adjustedCenterLat, adjustedCenterLng);
-
-      //estilo do mapa
-    const mapStyles = [
-      {
-        featureType: 'poi',
-        stylers: [{ visibility: 'off' }]
-      },
-    ];
-
-     //opções do mapa
+  private mapInitializer(): void {
     const mapOptions: google.maps.MapOptions = {
-      center: coordinates,
+      center: mapConfig.coordinates,
       fullscreenControl: false,
       zoom: 13,
-      styles: mapStyles,
+      styles: mapConfig.mapStyles,
       restriction: {
-        latLngBounds: allowedBounds,
+        latLngBounds: mapConfig.allowedBounds,
         strictBounds: true
      }
     };
 
-     //gerar o mapa
     const map = new google.maps.Map(this.gmap.nativeElement, mapOptions);
-
-     //informações dos pontos
-    const infoWindow = new google.maps.InfoWindow();
-
-      //carregar o geojson
-    this.loadAndProcessGeoJson(map, 'assets/data2.geojson');
-
-      //estilo do mapa - geojson
+    this.loadAndProcessGeoJson(map, mapConfig.urlMap);
     map.data.setStyle((feature: any) =>{
       const geometryType = feature.getGeometry().getType();
       if (geometryType === 'Point') {
@@ -143,9 +101,9 @@ export class AppComponent implements AfterViewInit, OnInit{
           visible: false
         };
       }
+
       let fillColor;
       const zona = feature.getProperty('Zona');
-
       switch (zona) {
         case 'Norte':
           fillColor = 'red';
@@ -170,34 +128,24 @@ export class AppComponent implements AfterViewInit, OnInit{
       };
     });
 
-    const customIconUrl = 'assets/icons/point.png';
-
-      //evento de click - infoWindow
     map.data.addListener('click', (event: any) => {
       const geometryType = event.feature.getGeometry().getType();
       if (geometryType === 'Point') {
         const position = event.feature.getGeometry().get();
-        const marker = new google.maps.Marker({
-          position: position,
-          icon: customIconUrl,
-          map: map
-        });
 
         const content = event.feature.getProperty('Name') || 'Nome não disponível';
-        infoWindow.setContent(content);
-        infoWindow.setPosition(position);
-        infoWindow.open(map);
+        this.openInfoWindow(map, content, position);
       }
     });
 
     this.addMarkers(map);
   }
 
-  async addMarkers(map: google.maps.Map): Promise<void> {
-    await this.loadPolygons(map);
+  private async addMarkers(map: google.maps.Map): Promise<void> {
+    await this.returnZoneService.loadPolygons(map);
 
     const customIcon = {
-      url: 'assets/icons/mosquito.png',
+      url: mapConfig.customIconUrlMosquito,
       scaledSize: new google.maps.Size(20, 20)
     };
 
@@ -206,21 +154,13 @@ export class AppComponent implements AfterViewInit, OnInit{
         const lat = parseFloat(item.latitude);
         const lng = parseFloat(item.longitude);
 
-        const zona = this.getZonaForLatLng(lat, lng);
+        const zona = this.returnZoneService.getZonaForLatLng(lat, lng);
         const status = item.status;
 
         const marker = new google.maps.Marker({
           position: new google.maps.LatLng(lat, lng),
           icon: customIcon,
           map: map
-        });
-
-        const infoContent = zona ?
-          `<div>Status: ${status}</div><div>Zona: ${zona}</div>` :
-          `<div>Status: ${status}</div><div>Zona não determinada</div>`;
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: infoContent
         });
 
         marker.addListener('click', () => {
@@ -237,37 +177,12 @@ export class AppComponent implements AfterViewInit, OnInit{
     });
   }
 
-  //verificar zonas
-  polygons: google.maps.Polygon[] = [];
-
-  loadPolygons(map: google.maps.Map): Promise<void> {
-    return new Promise((resolve, reject) => {
-      map.data.loadGeoJson('assets/data2.geojson', {}, (features) => {
-        features.forEach((feature: google.maps.Data.Feature) => {
-          const geometry = feature.getGeometry();
-          if (geometry!.getType() === 'Polygon') {
-            const polygonCoords = (geometry as google.maps.Data.Polygon).getAt(0).getArray().map((latLng: google.maps.LatLng) => {
-              return {lat: latLng.lat(), lng: latLng.lng()};
-            });
-            const polygon = new google.maps.Polygon({
-              paths: polygonCoords
-            });
-            polygon.set("zona", feature.getProperty('Zona'));
-            this.polygons.push(polygon);
-          }
-        });
-        resolve();
-      });
+  private openInfoWindow(map: google.maps.Map, content: string, position: google.maps.LatLng, anchor?: google.maps.MVCObject): void {
+    const infoWindow = new google.maps.InfoWindow({
+      content: content,
+      position: position
     });
-  }
-
-  getZonaForLatLng(lat: number, lng: number): string | null {
-    const point = new google.maps.LatLng(lat, lng);
-    const foundPolygon = this.polygons.find(polygon => {
-      const isInside = google.maps.geometry.poly.containsLocation(point, polygon);
-      return isInside;
-    });
-    return foundPolygon ? foundPolygon.get("zona") : null;
+    infoWindow.open(map, anchor);
   }
 
 
